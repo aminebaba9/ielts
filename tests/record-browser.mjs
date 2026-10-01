@@ -1,0 +1,32 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+const browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']});
+try{
+ const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8787/login');
+ await page.locator('input[type="email"]').fill('sa@local.test');
+ await page.locator('input[type="password"]').fill('LOCAL_TEST_STUDENT_A11b22c33');
+ await page.locator('button[type="submit"]').click();await page.waitForURL('http://127.0.0.1:8787/');
+ await page.goto('http://127.0.0.1:8787/progress');await page.locator('#my-speaking').waitFor();
+ await page.locator('#start-record').click();
+ await page.waitForFunction(()=>document.querySelector('#mic-status').textContent.includes('Recording…'));
+ await page.waitForTimeout(31500);
+ await page.locator('#stop-record').click();
+ await page.waitForFunction(()=>document.querySelector('#mic-status').textContent.includes('uploaded privately'),{timeout:25000});
+ assert.equal(await page.locator('#my-speaking audio').count(),1);
+ const src=await page.locator('#my-speaking audio').first().getAttribute('src');
+ const r=await page.evaluate(async src=>{const r=await fetch(src);return {status:r.status,mime:r.headers.get('content-type'),bytes:(await r.arrayBuffer()).byteLength}},src);
+ assert.equal(r.status,200);assert.ok(r.bytes>1000);assert.match(r.mime,/audio/);
+ await page.goto('http://127.0.0.1:8787/login');
+ await page.locator('input[type="email"]').fill('owner@local.test');
+ await page.locator('input[type="password"]').fill('LOCAL_TEST_OWNER_A11b22c33d44');
+ await page.locator('button[type="submit"]').click();await page.waitForURL('http://127.0.0.1:8787/');
+ await page.goto('http://127.0.0.1:8787/admin');
+ await page.waitForFunction(()=>document.querySelector('#work-user').options.length>1);
+ await page.locator('#work-user').selectOption('3');
+ const audio=page.locator('#work-items audio').first();await audio.waitFor();
+ const playback=await audio.evaluate(async a=>{await a.play();return {ready:a.readyState,duration:a.duration}});
+ assert.ok(playback.ready>=2);assert.ok(playback.duration>30);
+ assert.deepEqual(errors,[]);
+ console.log('Real browser microphone recording, upload and owner admin playback passed:',r.bytes,'bytes, duration',playback.duration.toFixed(1),'s');
+}finally{await browser.close()}

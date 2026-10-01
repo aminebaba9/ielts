@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in · IELTS Masterclass</title><link rel="stylesheet" href="/ui.css"></head><body><header class="bar"><a class="brand" href="/">✦ IELTS &amp; Academic Writing<small>Masterclass members</small></a></header><main><div class="narrow card"><div class="eyebrow">Your learning space</div><h1>Welcome back.</h1><p>Sign in to continue your IELTS &amp; Academic Writing Masterclass.</p><div id="notice" role="alert"></div><form id="login"><div class="field"><label for="email">Email address</label><input id="email" type="email" name="email" autocomplete="username" required></div><div class="field"><label for="code">Your private access code</label><input id="code" type="password" name="code" autocomplete="current-password" required></div><button id="submit" class="wfull" type="submit">Open my masterclass →</button></form><p class="note">Access is by invitation only. If your code is lost or your subscription needs renewal, contact the masterclass owner.</p></div></main><script>
+const form=document.getElementById('login'), notice=document.getElementById('notice');
+form.addEventListener('submit',async e=>{
+ e.preventDefault();document.getElementById('submit').disabled=true;notice.textContent='';
+ try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:form.elements.namedItem('email').value,code:form.elements.namedItem('code').value})});const data=await r.json();
+  if(!r.ok)throw new Error(data.error||'Sign in failed.');location.href=data.active?'/':'/expired';
+ }catch(error){notice.className='notice error';notice.textContent=error.message;document.getElementById('submit').disabled=false;}
+});
+</script></body></html>
